@@ -28,9 +28,34 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
     h1 { font-size: 1.5rem; margin: 0; }
+    
+    /* 日付タブ */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      background: #e2e8f0;
+      color: #475569;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
     .card {
       background: var(--card-bg);
       padding: 16px;
@@ -63,13 +88,17 @@
       margin-bottom: 8px;
     }
     label { font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px; }
-    input, select {
+    input, select, textarea {
       width: 100%;
       padding: 8px;
       border: 1px solid var(--border);
       border-radius: 6px;
       box-sizing: border-box;
-      font-size: 16px; /* スマホでの入力しやすさ向上 */
+      font-size: 16px;
+    }
+    textarea {
+      resize: vertical;
+      height: 60px;
     }
     .btn {
       background: var(--primary);
@@ -116,8 +145,11 @@
 
   <button class="btn btn-share" onclick="shareToLine()">📱 LINEで妻に共有する</button>
 
+  <!-- 日付選択タブ -->
+  <div class="tabs" id="tabContainer"></div>
+
   <div class="total-box">
-    <span>交通費 合計:</span>
+    <span>交通費 合計 (全日程):</span>
     <span id="totalFare">¥0</span>
   </div>
 
@@ -127,6 +159,15 @@
 </div>
 
 <script>
+  const dates = [
+    { key: '2026-09-12', label: '9/12 (土)' },
+    { key: '2026-09-13', label: '9/13 (日)' },
+    { key: '2026-09-14', label: '9/14 (月)' },
+    { key: '2026-09-15', label: '9/15 (火)' },
+    { key: '2026-09-16', label: '9/16 (水)' }
+  ];
+
+  let currentDate = '2026-09-12';
   let items = [];
 
   window.onload = function() {
@@ -144,11 +185,8 @@
       loadData();
     }
 
-    if (items.length === 0) {
-      addItem();
-    } else {
-      render();
-    }
+    renderTabs();
+    render();
   };
 
   function saveData() {
@@ -163,15 +201,33 @@
     }
   }
 
+  function renderTabs() {
+    const container = document.getElementById('tabContainer');
+    container.innerHTML = '';
+    dates.forEach(d => {
+      const btn = document.createElement('button');
+      btn.className = `tab-btn ${d.key === currentDate ? 'active' : ''}`;
+      btn.innerText = d.label;
+      btn.onclick = () => {
+        currentDate = d.key;
+        renderTabs();
+        render();
+      };
+      container.appendChild(btn);
+    });
+  }
+
   function addItem() {
     items.push({
       id: Date.now(),
-      startTime: '',
-      endTime: '',
+      date: currentDate,
+      startTime: '08:00',
+      endTime: '09:00',
       type: '電車',
       from: '',
       to: '',
-      fare: 0
+      fare: 0,
+      memo: ''
     });
     saveData();
     render();
@@ -183,15 +239,13 @@
     render();
   }
 
-  // 入力時の不具合を修正（入力中に全画面再描画しない仕組みに変更）
   function updateItem(id, field, value) {
     const item = items.find(i => i.id === id);
     if (item) {
       item[field] = field === 'fare' ? Number(value) : value;
       saveData();
       
-      // 出発地・到着地が変わったときだけYahooボタンを更新
-      if (field === 'from' || field === 'to') {
+      if (field === 'from' || field === 'to' || field === 'startTime' || field === 'type') {
         updateYahooButton(id);
       }
     }
@@ -202,10 +256,17 @@
     const btnContainer = document.getElementById(`yahoo-btn-${id}`);
     if (!btnContainer || !item) return;
 
+    const isTransit = ['電車', '新幹線', 'バス', '飛行機'].includes(item.type);
     const hasRoute = item.from.trim() !== '' && item.to.trim() !== '';
-    if (hasRoute) {
-      const yahooUrl = `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}`;
-      btnContainer.innerHTML = `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.from} → ${item.to})</a>`;
+
+    if (isTransit && hasRoute) {
+      // 日付と時間の整形 (YYYYMMDD & HHMM)
+      const dateStr = item.date.replace(/-/g, '');
+      const timeStr = item.startTime ? item.startTime.replace(':', '') : '0800';
+      
+      const yahooUrl = `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${dateStr.substring(0,4)}&m=${dateStr.substring(4,6)}&d=${dateStr.substring(6,8)}&hh=${timeStr.substring(0,2)}&m1=${timeStr.substring(2,3)}&m2=${timeStr.substring(3,4)}&type=1`;
+      
+      btnContainer.innerHTML = `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.startTime}発)` ;
     } else {
       btnContainer.innerHTML = '';
     }
@@ -220,7 +281,9 @@
     const listEl = document.getElementById('itemList');
     listEl.innerHTML = '';
 
-    items.forEach((item) => {
+    const currentItems = items.filter(i => (i.date || '2026-09-12') === currentDate);
+
+    currentItems.forEach((item) => {
       const card = document.createElement('div');
       card.className = 'card item-card';
 
@@ -230,18 +293,18 @@
         
         <div class="grid">
           <div>
-            <label>出発時間</label>
+            <label>開始時間</label>
             <input type="time" value="${item.startTime}" onchange="updateItem(${item.id}, 'startTime', this.value)">
           </div>
           <div>
-            <label>到着時間</label>
+            <label>終了時間</label>
             <input type="time" value="${item.endTime}" onchange="updateItem(${item.id}, 'endTime', this.value)">
           </div>
         </div>
 
         <div class="grid">
           <div>
-            <label>交通機関</label>
+            <label>分類・交通機関</label>
             <select onchange="updateItem(${item.id}, 'type', this.value)">
               <option value="電車" ${item.type === '電車' ? 'selected' : ''}>電車</option>
               <option value="新幹線" ${item.type === '新幹線' ? 'selected' : ''}>新幹線</option>
@@ -249,23 +312,32 @@
               <option value="飛行機" ${item.type === '飛行機' ? 'selected' : ''}>飛行機</option>
               <option value="車" ${item.type === '車' ? 'selected' : ''}>車</option>
               <option value="徒歩" ${item.type === '徒歩' ? 'selected' : ''}>徒歩</option>
+              <option value="観光" ${item.type === '観光' ? 'selected' : ''}>🏰 観光スポット</option>
+              <option value="食事" ${item.type === '食事' ? 'selected' : ''}>🍱 食事/カフェ</option>
+              <option value="ホテル" ${item.type === 'ホテル' ? 'selected' : ''}>🏨 ホテル/宿泊</option>
+              <option value="その他" ${item.type === 'その他' ? 'selected' : ''}>📌 その他</option>
             </select>
           </div>
           <div>
-            <label>運賃（円）</label>
+            <label>費用・運賃（円）</label>
             <input type="number" value="${item.fare || ''}" placeholder="0" oninput="updateItem(${item.id}, 'fare', this.value)">
           </div>
         </div>
 
         <div class="grid">
           <div>
-            <label>出発地</label>
-            <input type="text" value="${item.from}" placeholder="例: 東京" oninput="updateItem(${item.id}, 'from', this.value)">
+            <label>出発地 / スポット名</label>
+            <input type="text" value="${item.from}" placeholder="例: 尾張一宮 / 名古屋城" oninput="updateItem(${item.id}, 'from', this.value)">
           </div>
           <div>
-            <label>到着地</label>
-            <input type="text" value="${item.to}" placeholder="例: 大阪" oninput="updateItem(${item.id}, 'to', this.value)">
+            <label>到着地（移動時のみ）</label>
+            <input type="text" value="${item.to}" placeholder="例: 名古屋" oninput="updateItem(${item.id}, 'to', this.value)">
           </div>
+        </div>
+
+        <div style="margin-bottom: 8px;">
+          <label>メモ・詳細情報</label>
+          <textarea placeholder="例: 予約番号、持ち物、集合場所など" oninput="updateItem(${item.id}, 'memo', this.value)">${item.memo || ''}</textarea>
         </div>
 
         <div id="yahoo-btn-${item.id}"></div>
