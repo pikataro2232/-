@@ -273,23 +273,20 @@
   function getYahooUrl(item) {
     if (!item.from || !item.to) return '';
     
-    // 年・月・日を取得（月・日は0埋めなし）
     const targetDate = item.date || currentDate;
     const parts = targetDate.split('-');
     const y = parts[0];
     const m = parseInt(parts[1], 10).toString();
     const d = parseInt(parts[2], 10).toString();
     
-    // 時刻を取得（例: "08:00" -> hh="08", m1="0", m2="0"）
     const timeParts = (item.startTime || '08:00').split(':');
     const hh = timeParts[0].padStart(2, '0');
     const mm = (timeParts[1] || '00').padStart(2, '0');
     const m1 = mm.substring(0, 1);
     const m2 = mm.substring(1, 2);
 
-    // 有料特急・新幹線・空路・高速バスなど全ての特急条件を明示的に有効化
-    // expkind=1 (有料特急), shin=1 (新幹線), express=1 (特急), al=1 (空路), hb=1 (高速バス)
-    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&shin=1&al=1&hb=1&lb=1`;
+    // Yahoo!路線情報Web版専用の直リンクパラメータ（有料特急・全機能強制有効）
+    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&shin=1&al=1&hb=1&lb=1&s=0`;
   }
 
   function updateYahooButton(id) {
