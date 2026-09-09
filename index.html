@@ -124,7 +124,7 @@
     }
     .transit-btn {
       display: block;
-      background: #ff0033;
+      background: #008000; /* NAVITIMEグリーン */
       color: white;
       text-decoration: none;
       padding: 10px 12px;
@@ -133,10 +133,6 @@
       font-weight: bold;
       margin-top: 8px;
       text-align: center;
-    }
-    .navitime-btn {
-      background: #008000; /* NAVITIMEグリーン */
-      margin-top: 6px;
     }
   </style>
 </head>
@@ -277,27 +273,19 @@
   function getNavitimeUrl(item) {
     const targetDate = (item.date || currentDate).replace(/-/g, '');
     const timeStr = (item.startTime || '08:00').replace(':', '');
-    return `https://www.navitime.co.jp/transfer/searchlist?orvStationName=${encodeURIComponent(item.from)}&dnvStationName=${encodeURIComponent(item.to)}&year=${targetDate.substring(0,4)}&month=${targetDate.substring(4,6)}&day=${targetDate.substring(6,8)}&hour=${timeStr.substring(0,2)}&minute=${timeStr.substring(2,4)}&basis=1&sort=3`;
-  }
+    const year = targetDate.substring(0,4);
+    const month = targetDate.substring(4,6);
+    const day = targetDate.substring(6,8);
+    const hour = timeStr.substring(0,2);
+    const minute = timeStr.substring(2,4);
 
-  function getYahooUrl(item) {
-    const targetDate = item.date || currentDate;
-    const parts = targetDate.split('-');
-    const y = parts[0];
-    const m = parseInt(parts[1], 10).toString();
-    const d = parseInt(parts[2], 10).toString();
-    
-    const timeParts = (item.startTime || '08:00').split(':');
-    const hh = timeParts[0].padStart(2, '0');
-    const mm = (timeParts[1] || '00').padStart(2, '0');
-    const m1 = mm.substring(0, 1);
-    const m2 = mm.substring(1, 2);
-
-    // 新幹線フラグ判定（分類で新幹線が選ばれていない限り shin=0 を徹底維持）
     const isShinkansen = item.type === '新幹線';
-    const shinParam = isShinkansen ? 'shin=1' : 'shin=0';
+    
+    // 特急/有料列車を【強制的ON】にし、新幹線を【OFF】に設定
+    // useShinkansen=0 / useLimitedExpress=1 / useExpress=1 / basis=1(出発時間指定) / sort=3(乗換回数順)
+    const shinkansenParam = isShinkansen ? '1' : '0';
 
-    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&al=0&hb=0&lb=0&s=2`;
+    return `https://www.navitime.co.jp/transfer/searchlist?orvStationName=${encodeURIComponent(item.from)}&dnvStationName=${encodeURIComponent(item.to)}&year=${year}&month=${month}&day=${day}&hour=${hour}&minute=${minute}&basis=1&sort=3&useShinkansen=${shinkansenParam}&useLimitedExpress=1&useExpress=1&usePlane=0&useBus=0`;
   }
 
   function updateYahooButton(id) {
@@ -309,13 +297,8 @@
     const toVal = (item.to || '').trim();
 
     if (fromVal !== '' && toVal !== '') {
-      const yahooUrl = getYahooUrl(item);
       const naviUrl = getNavitimeUrl(item);
-      
-      btnContainer.innerHTML = `
-        <a href="${naviUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn navitime-btn">🟢 NAVITIMEで検索（近鉄特急が1番上に出ます）</a>
-        <a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.startTime}発)</a>
-      `;
+      btnContainer.innerHTML = `<a href="${naviUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 乗換案内で検索 (${item.startTime}発)</a>`;
     } else {
       btnContainer.innerHTML = '';
     }
