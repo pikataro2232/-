@@ -288,8 +288,8 @@
     const isShinkansen = item.type === '新幹線';
     const shinParam = isShinkansen ? 'shin=1' : 'shin=0';
 
-    // s=2 を指定して「楽（乗換回数が少ない順）」で検索結果を開く
-    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&al=1&hb=1&lb=1&s=2`;
+    // 新幹線オフ（shin=0）、有料特急オン（express=1&expkind=1）、空路・有料特急バス全オフで近鉄特急を最優先化
+    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&al=0&hb=0&lb=0&s=2`;
   }
 
   function updateYahooButton(id) {
@@ -365,11 +365,11 @@
         <div class="grid">
           <div>
             <label>出発地 / スポット名</label>
-            <input type="text" value="${item.from || ''}" placeholder="例: 尾張一宮" oninput="updateItem(${item.id}, 'from', this.value)">
+            <input type="text" value="${item.from || ''}" placeholder="例: 近鉄名古屋" oninput="updateItem(${item.id}, 'from', this.value)">
           </div>
           <div>
             <label>到着地（移動時のみ）</label>
-            <input type="text" value="${item.to || ''}" placeholder="例: 名古屋" oninput="updateItem(${item.id}, 'to', this.value)">
+            <input type="text" value="${item.to || ''}" placeholder="例: 大阪難波" oninput="updateItem(${item.id}, 'to', this.value)">
           </div>
         </div>
 
