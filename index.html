@@ -111,6 +111,7 @@
       font-size: 1rem;
     }
     .btn-share { background: #06c755; margin-bottom: 12px; }
+    .btn-reset { background: #94a3b8; font-size: 0.75rem; padding: 6px; margin-top: 20px; }
     .btn-delete {
       background: #ef4444;
       color: white;
@@ -154,6 +155,8 @@
   <div id="itemList"></div>
 
   <button class="btn" onclick="addItem()">＋ 移動・予定を追加</button>
+  
+  <button class="btn btn-reset" onclick="resetAllData()">⚠️ 不具合がある場合：データを全リセットする</button>
 </div>
 
 <script>
@@ -195,7 +198,24 @@
   function loadData() {
     const saved = localStorage.getItem('tabi_shiori_data');
     if (saved) {
-      items = JSON.parse(saved);
+      try {
+        items = JSON.parse(saved);
+        // 古いデータ形式の補正
+        items = items.map(item => ({
+          ...item,
+          date: item.date || '2026-09-12'
+        }));
+      } catch(e) {
+        items = [];
+      }
+    }
+  }
+
+  function resetAllData() {
+    if (confirm('すべての予定を削除して初期化しますか？')) {
+      localStorage.removeItem('tabi_shiori_data');
+      items = [];
+      render();
     }
   }
 
@@ -244,7 +264,7 @@
       saveData();
       
       if (field === 'startTime') {
-        render(); // 時間が変わったら自動で並べ替え
+        render();
       } else if (field === 'from' || field === 'to' || field === 'type') {
         updateYahooButton(id);
       }
@@ -280,7 +300,6 @@
     const listEl = document.getElementById('itemList');
     listEl.innerHTML = '';
 
-    // 現在選択中の日付の予定を抽出し、開始時間順（早い順）に並べ替え
     const currentItems = items
       .filter(i => (i.date || '2026-09-12') === currentDate)
       .sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'));
