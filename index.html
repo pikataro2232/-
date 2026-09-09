@@ -272,12 +272,14 @@
 
   function getYahooUrl(item) {
     if (!item.from || !item.to) return '';
-    const dateStr = (item.date || currentDate).replace(/-/g, '');
-    const timeStr = (item.startTime || '08:00').replace(':', '');
     
-    const y = dateStr.substring(0,4);
-    const m = dateStr.substring(4,6);
-    const d = dateStr.substring(6,8);
+    // Yahoo乗換案内のWebエラー回避のため、検索実行時の「現在日付」または指定時間を適用
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    
+    const timeStr = (item.startTime || '08:00').replace(':', '');
     const hh = timeStr.substring(0,2);
     const m1 = timeStr.substring(2,3);
     const m2 = timeStr.substring(3,4);
@@ -295,7 +297,7 @@
 
     if (fromVal !== '' && toVal !== '') {
       const url = getYahooUrl(item);
-      btnContainer.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.from} → ${item.to})</a>`;
+      btnContainer.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.startTime}発)</a>`;
     } else {
       btnContainer.innerHTML = '';
     }
