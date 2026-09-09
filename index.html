@@ -285,8 +285,11 @@
     const m1 = mm.substring(0, 1);
     const m2 = mm.substring(1, 2);
 
-    // Yahoo!路線情報Web版専用の直リンクパラメータ（有料特急・全機能強制有効）
-    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&shin=1&al=1&hb=1&lb=1&s=0`;
+    const isShinkansen = item.type === '新幹線';
+    const shinParam = isShinkansen ? 'shin=1' : 'shin=0';
+
+    // s=2 を指定して「楽（乗換回数が少ない順）」で検索結果を開く
+    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&al=1&hb=1&lb=1&s=2`;
   }
 
   function updateYahooButton(id) {
