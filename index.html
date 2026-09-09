@@ -273,16 +273,19 @@
   function getYahooUrl(item) {
     if (!item.from || !item.to) return '';
     
-    // Yahoo乗換案内のWebエラー回避のため、検索実行時の「現在日付」または指定時間を適用
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
+    // 日付分解 (例: 2026-09-12)
+    const itemDate = item.date || currentDate;
+    const dateParts = itemDate.split('-');
+    const y = dateParts[0];
+    const m = dateParts[1];
+    const d = dateParts[2];
     
-    const timeStr = (item.startTime || '08:00').replace(':', '');
-    const hh = timeStr.substring(0,2);
-    const m1 = timeStr.substring(2,3);
-    const m2 = timeStr.substring(3,4);
+    // 時間分解 (例: "08:00" -> hh="08", m1="0", m2="0")
+    const timeParts = (item.startTime || '08:00').split(':');
+    const hh = timeParts[0].padStart(2, '0');
+    const mm = (timeParts[1] || '00').padStart(2, '0');
+    const m1 = mm.substring(0, 1);
+    const m2 = mm.substring(1, 2);
 
     return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1`;
   }
