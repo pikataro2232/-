@@ -273,14 +273,14 @@
   function getYahooUrl(item) {
     if (!item.from || !item.to) return '';
     
-    // 日付分解 (例: 2026-09-12)
+    // しおりの日付（例: 2026-09-12）を取得して忠実にURL化
     const itemDate = item.date || currentDate;
     const dateParts = itemDate.split('-');
     const y = dateParts[0];
     const m = dateParts[1];
     const d = dateParts[2];
     
-    // 時間分解 (例: "08:00" -> hh="08", m1="0", m2="0")
+    // 開始時間を分解（例: "08:00" -> hh="08", m1="0", m2="0"）
     const timeParts = (item.startTime || '08:00').split(':');
     const hh = timeParts[0].padStart(2, '0');
     const mm = (timeParts[1] || '00').padStart(2, '0');
