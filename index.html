@@ -122,9 +122,10 @@
       font-size: 0.8rem;
       float: right;
     }
+    
+    /* 各検索サービスのボタンデザイン */
     .transit-btn {
       display: block;
-      background: #ff0033; /* Yahooレッド */
       color: white;
       text-decoration: none;
       padding: 10px 12px;
@@ -134,14 +135,9 @@
       margin-top: 8px;
       text-align: center;
     }
-    .kintetsu-btn {
-      background: #d97706; /* 近鉄オレンジ */
-      margin-top: 6px;
-    }
-    .google-btn {
-      background: #4285f4; /* Googleブルー */
-      margin-top: 6px;
-    }
+    .yahoo-btn { background: #ff0033; }
+    .navitime-btn { background: #008000; }
+    .google-btn { background: #4285f4; }
   </style>
 </head>
 <body>
@@ -273,11 +269,12 @@
       if (field === 'startTime') {
         render();
       } else {
-        updateYahooButton(id);
+        updateSearchButtons(id);
       }
     }
   }
 
+  // Yahoo!乗換案内 URL (特急利用: express=1, 新幹線: shin=0/1)
   function getYahooUrl(item) {
     const targetDate = item.date || currentDate;
     const parts = targetDate.split('-');
@@ -294,16 +291,28 @@
     const isShinkansen = item.type === '新幹線';
     const shinParam = isShinkansen ? 'shin=1' : 'shin=0';
 
-    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&al=0&hb=0&lb=0&s=2`;
+    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&al=0&hb=0&lb=0&s=0`;
   }
 
-  function getGoogleMapsUrl(item) {
-    return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(item.from)}&destination=${encodeURIComponent(item.to)}&travelmode=transit`;
+  // NAVITIME URL (有料特急有効化パラメータ)
+  function getNavitimeUrl(item) {
+    const targetDate = (item.date || currentDate).replace(/-/g, '');
+    const timeStr = (item.startTime || '08:00').replace(':', '');
+    const year = targetDate.substring(0,4);
+    const month = targetDate.substring(4,6);
+    const day = targetDate.substring(6,8);
+    const hour = timeStr.substring(0,2);
+    const minute = timeStr.substring(2,4);
+
+    const isShinkansen = item.type === '新幹線';
+    const shinVal = isShinkansen ? '1' : '0';
+
+    return `https://www.navitime.co.jp/transfer/searchlist?orvStationName=${encodeURIComponent(item.from)}&dnvStationName=${encodeURIComponent(item.to)}&year=${year}&month=${month}&day=${day}&hour=${hour}&minute=${minute}&basis=1&sort=0&useShinkansen=${shinVal}&useLimitedExpress=1&useExpress=1&useBus=0&usePlane=0`;
   }
 
-  function updateYahooButton(id) {
+  function updateSearchButtons(id) {
     const item = items.find(i => i.id === id);
-    const btnContainer = document.getElementById(`yahoo-btn-${id}`);
+    const btnContainer = document.getElementById(`search-btn-container-${id}`);
     if (!btnContainer || !item) return;
 
     const fromVal = (item.from || '').trim();
@@ -311,19 +320,12 @@
 
     if (fromVal !== '' && toVal !== '') {
       const yahooUrl = getYahooUrl(item);
-      const googleUrl = getGoogleMapsUrl(item);
-      
-      const isKintetsu = (fromVal.includes('名古屋') || fromVal.includes('近鉄')) && (toVal.includes('難波') || toVal.includes('近鉄'));
+      const naviUrl = getNavitimeUrl(item);
 
-      let html = `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔴 Yahoo!乗換案内で検索 (${item.startTime}発)</a>`;
-
-      if (isKintetsu && item.type !== '新幹線') {
-        html += `<a href="https://www.ticket.kintetsu.co.jp/M/MZZ/MZZ20.do?op=e" target="_blank" rel="noopener noreferrer" class="transit-btn kintetsu-btn">🚆 近鉄特急（ひのとり）空席確認・予約</a>`;
-      }
-
-      html += `<a href="${googleUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn google-btn">📍 Googleマップでルート検索</a>`;
-
-      btnContainer.innerHTML = html;
+      btnContainer.innerHTML = `
+        <a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn yahoo-btn">🔴 Yahoo!乗換案内で検索 (${item.startTime}発)</a>
+        <a href="${naviUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn navitime-btn">🟢 NAVITIMEで検索 (${item.startTime}発)</a>
+      `;
     } else {
       btnContainer.innerHTML = '';
     }
@@ -399,11 +401,11 @@
           <textarea placeholder="例: 予約番号、持ち物など" oninput="updateItem(${item.id}, 'memo', this.value)">${item.memo || ''}</textarea>
         </div>
 
-        <div id="yahoo-btn-${item.id}"></div>
+        <div id="search-btn-container-${item.id}"></div>
       `;
 
       listEl.appendChild(card);
-      updateYahooButton(item.id);
+      updateSearchButtons(item.id);
     });
 
     calculateTotal();
