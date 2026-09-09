@@ -69,16 +69,18 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       box-sizing: border-box;
+      font-size: 16px; /* スマホでの入力しやすさ向上 */
     }
     .btn {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 10px 16px;
+      padding: 12px 16px;
       border-radius: 8px;
       font-weight: bold;
       width: 100%;
       cursor: pointer;
+      font-size: 1rem;
     }
     .btn-share { background: #06c755; margin-bottom: 12px; }
     .btn-delete {
@@ -92,11 +94,11 @@
       float: right;
     }
     .transit-btn {
-      display: inline-block;
+      display: block;
       background: #ff0033;
       color: white;
       text-decoration: none;
-      padding: 8px 12px;
+      padding: 10px 12px;
       border-radius: 6px;
       font-size: 0.85rem;
       font-weight: bold;
@@ -127,7 +129,6 @@
 <script>
   let items = [];
 
-  // 起動時の処理（URLパラメータまたはlocalStorageからデータ復元）
   window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     const sharedData = urlParams.get('data');
@@ -150,13 +151,11 @@
     }
   };
 
-  // データをブラウザに保存（閉じた後も消えない）
   function saveData() {
     localStorage.setItem('tabi_shiori_data', JSON.stringify(items));
     calculateTotal();
   }
 
-  // 保存データの読み込み
   function loadData() {
     const saved = localStorage.getItem('tabi_shiori_data');
     if (saved) {
@@ -164,7 +163,6 @@
     }
   }
 
-  // 項目追加
   function addItem() {
     items.push({
       id: Date.now(),
@@ -179,32 +177,45 @@
     render();
   }
 
-  // 項目削除（確実に削除を実行）
   function deleteItem(id) {
     items = items.filter(item => item.id !== id);
     saveData();
     render();
   }
 
-  // 入力変更時の更新
+  // 入力時の不具合を修正（入力中に全画面再描画しない仕組みに変更）
   function updateItem(id, field, value) {
     const item = items.find(i => i.id === id);
     if (item) {
       item[field] = field === 'fare' ? Number(value) : value;
       saveData();
+      
+      // 出発地・到着地が変わったときだけYahooボタンを更新
       if (field === 'from' || field === 'to') {
-        render(); // Yahooボタン更新用
+        updateYahooButton(id);
       }
     }
   }
 
-  // 合計計算
+  function updateYahooButton(id) {
+    const item = items.find(i => i.id === id);
+    const btnContainer = document.getElementById(`yahoo-btn-${id}`);
+    if (!btnContainer || !item) return;
+
+    const hasRoute = item.from.trim() !== '' && item.to.trim() !== '';
+    if (hasRoute) {
+      const yahooUrl = `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}`;
+      btnContainer.innerHTML = `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.from} → ${item.to})</a>`;
+    } else {
+      btnContainer.innerHTML = '';
+    }
+  }
+
   function calculateTotal() {
     const total = items.reduce((sum, item) => sum + (Number(item.fare) || 0), 0);
     document.getElementById('totalFare').innerText = '¥' + total.toLocaleString();
   }
 
-  // 表示のレンダリング
   function render() {
     const listEl = document.getElementById('itemList');
     listEl.innerHTML = '';
@@ -212,10 +223,6 @@
     items.forEach((item) => {
       const card = document.createElement('div');
       card.className = 'card item-card';
-
-      // Yahoo乗換案内のURL生成
-      const hasRoute = item.from.trim() !== '' && item.to.trim() !== '';
-      const yahooUrl = `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}`;
 
       card.innerHTML = `
         <button class="btn-delete" onclick="deleteItem(${item.id})">削除 🗑️</button>
@@ -261,16 +268,16 @@
           </div>
         </div>
 
-        ${hasRoute ? `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.from} → ${item.to})</a>` : ''}
+        <div id="yahoo-btn-${item.id}"></div>
       `;
 
       listEl.appendChild(card);
+      updateYahooButton(item.id);
     });
 
     calculateTotal();
   }
 
-  // LINE共有（現在のデータをエンコードしてURLで送信）
   function shareToLine() {
     const jsonStr = JSON.stringify(items);
     const encodedData = btoa(unescape(encodeURIComponent(jsonStr)));
