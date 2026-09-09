@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>旅のしおり</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --border: #e2e8f0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 16px;
+      padding-bottom: 80px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.5rem; margin: 0; }
+    .card {
+      background: var(--card-bg);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 16px;
+    }
+    .total-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .item-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      position: relative;
+      background: #fff;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    label { font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px; }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      width: 100%;
+      cursor: pointer;
+    }
+    .btn-share { background: #06c755; margin-bottom: 12px; }
+    .btn-delete {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      float: right;
+    }
+    .transit-btn {
+      display: inline-block;
+      background: #ff0033;
+      color: white;
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-top: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>✈️ 旅のしおり</h1>
+  </div>
+
+  <button class="btn btn-share" onclick="shareToLine()">📱 LINEで妻に共有する</button>
+
+  <div class="total-box">
+    <span>交通費 合計:</span>
+    <span id="totalFare">¥0</span>
+  </div>
+
+  <div id="itemList"></div>
+
+  <button class="btn" onclick="addItem()">＋ 移動・予定を追加</button>
+</div>
+
+<script>
+  let items = [];
+
+  // 起動時の処理（URLパラメータまたはlocalStorageからデータ復元）
+  window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedData = urlParams.get('data');
+
+    if (sharedData) {
+      try {
+        items = JSON.parse(decodeURIComponent(escape(atob(sharedData))));
+        saveData();
+      } catch (e) {
+        loadData();
+      }
+    } else {
+      loadData();
+    }
+
+    if (items.length === 0) {
+      addItem();
+    } else {
+      render();
+    }
+  };
+
+  // データをブラウザに保存（閉じた後も消えない）
+  function saveData() {
+    localStorage.setItem('tabi_shiori_data', JSON.stringify(items));
+    calculateTotal();
+  }
+
+  // 保存データの読み込み
+  function loadData() {
+    const saved = localStorage.getItem('tabi_shiori_data');
+    if (saved) {
+      items = JSON.parse(saved);
+    }
+  }
+
+  // 項目追加
+  function addItem() {
+    items.push({
+      id: Date.now(),
+      startTime: '',
+      endTime: '',
+      type: '電車',
+      from: '',
+      to: '',
+      fare: 0
+    });
+    saveData();
+    render();
+  }
+
+  // 項目削除（確実に削除を実行）
+  function deleteItem(id) {
+    items = items.filter(item => item.id !== id);
+    saveData();
+    render();
+  }
+
+  // 入力変更時の更新
+  function updateItem(id, field, value) {
+    const item = items.find(i => i.id === id);
+    if (item) {
+      item[field] = field === 'fare' ? Number(value) : value;
+      saveData();
+      if (field === 'from' || field === 'to') {
+        render(); // Yahooボタン更新用
+      }
+    }
+  }
+
+  // 合計計算
+  function calculateTotal() {
+    const total = items.reduce((sum, item) => sum + (Number(item.fare) || 0), 0);
+    document.getElementById('totalFare').innerText = '¥' + total.toLocaleString();
+  }
+
+  // 表示のレンダリング
+  function render() {
+    const listEl = document.getElementById('itemList');
+    listEl.innerHTML = '';
+
+    items.forEach((item) => {
+      const card = document.createElement('div');
+      card.className = 'card item-card';
+
+      // Yahoo乗換案内のURL生成
+      const hasRoute = item.from.trim() !== '' && item.to.trim() !== '';
+      const yahooUrl = `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}`;
+
+      card.innerHTML = `
+        <button class="btn-delete" onclick="deleteItem(${item.id})">削除 🗑️</button>
+        <div style="clear:both; margin-bottom: 8px;"></div>
+        
+        <div class="grid">
+          <div>
+            <label>出発時間</label>
+            <input type="time" value="${item.startTime}" onchange="updateItem(${item.id}, 'startTime', this.value)">
+          </div>
+          <div>
+            <label>到着時間</label>
+            <input type="time" value="${item.endTime}" onchange="updateItem(${item.id}, 'endTime', this.value)">
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label>交通機関</label>
+            <select onchange="updateItem(${item.id}, 'type', this.value)">
+              <option value="電車" ${item.type === '電車' ? 'selected' : ''}>電車</option>
+              <option value="新幹線" ${item.type === '新幹線' ? 'selected' : ''}>新幹線</option>
+              <option value="バス" ${item.type === 'バス' ? 'selected' : ''}>バス</option>
+              <option value="飛行機" ${item.type === '飛行機' ? 'selected' : ''}>飛行機</option>
+              <option value="車" ${item.type === '車' ? 'selected' : ''}>車</option>
+              <option value="徒歩" ${item.type === '徒歩' ? 'selected' : ''}>徒歩</option>
+            </select>
+          </div>
+          <div>
+            <label>運賃（円）</label>
+            <input type="number" value="${item.fare || ''}" placeholder="0" oninput="updateItem(${item.id}, 'fare', this.value)">
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label>出発地</label>
+            <input type="text" value="${item.from}" placeholder="例: 東京" oninput="updateItem(${item.id}, 'from', this.value)">
+          </div>
+          <div>
+            <label>到着地</label>
+            <input type="text" value="${item.to}" placeholder="例: 大阪" oninput="updateItem(${item.id}, 'to', this.value)">
+          </div>
+        </div>
+
+        ${hasRoute ? `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.from} → ${item.to})</a>` : ''}
+      `;
+
+      listEl.appendChild(card);
+    });
+
+    calculateTotal();
+  }
+
+  // LINE共有（現在のデータをエンコードしてURLで送信）
+  function shareToLine() {
+    const jsonStr = JSON.stringify(items);
+    const encodedData = btoa(unescape(encodeURIComponent(jsonStr)));
+    const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
+    
+    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent('旅のしおりを共有します：\n' + shareUrl)}`;
+    window.open(lineUrl, '_blank');
+  }
+</script>
+
+</body>
+</html>
