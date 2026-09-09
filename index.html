@@ -124,7 +124,7 @@
     }
     .transit-btn {
       display: block;
-      background: #008000; /* NAVITIMEグリーン */
+      background: #4285f4; /* Googleブルー */
       color: white;
       text-decoration: none;
       padding: 10px 12px;
@@ -133,6 +133,10 @@
       font-weight: bold;
       margin-top: 8px;
       text-align: center;
+    }
+    .kintetsu-btn {
+      background: #d97706; /* 近鉄オレンジ */
+      margin-top: 6px;
     }
   </style>
 </head>
@@ -270,22 +274,8 @@
     }
   }
 
-  function getNavitimeUrl(item) {
-    const targetDate = (item.date || currentDate).replace(/-/g, '');
-    const timeStr = (item.startTime || '08:00').replace(':', '');
-    const year = targetDate.substring(0,4);
-    const month = targetDate.substring(4,6);
-    const day = targetDate.substring(6,8);
-    const hour = timeStr.substring(0,2);
-    const minute = timeStr.substring(2,4);
-
-    const isShinkansen = item.type === '新幹線';
-    
-    // 特急/有料列車を【強制的ON】にし、新幹線を【OFF】に設定
-    // useShinkansen=0 / useLimitedExpress=1 / useExpress=1 / basis=1(出発時間指定) / sort=3(乗換回数順)
-    const shinkansenParam = isShinkansen ? '1' : '0';
-
-    return `https://www.navitime.co.jp/transfer/searchlist?orvStationName=${encodeURIComponent(item.from)}&dnvStationName=${encodeURIComponent(item.to)}&year=${year}&month=${month}&day=${day}&hour=${hour}&minute=${minute}&basis=1&sort=3&useShinkansen=${shinkansenParam}&useLimitedExpress=1&useExpress=1&usePlane=0&useBus=0`;
+  function getGoogleMapsUrl(item) {
+    return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(item.from)}&destination=${encodeURIComponent(item.to)}&travelmode=transit`;
   }
 
   function updateYahooButton(id) {
@@ -297,8 +287,17 @@
     const toVal = (item.to || '').trim();
 
     if (fromVal !== '' && toVal !== '') {
-      const naviUrl = getNavitimeUrl(item);
-      btnContainer.innerHTML = `<a href="${naviUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 乗換案内で検索 (${item.startTime}発)</a>`;
+      const googleUrl = getGoogleMapsUrl(item);
+      const isKintetsu = (fromVal.includes('名古屋') || fromVal.includes('近鉄')) && (toVal.includes('難波') || toVal.includes('近鉄'));
+
+      if (isKintetsu && item.type !== '新幹線') {
+        btnContainer.innerHTML = `
+          <a href="https://www.ticket.kintetsu.co.jp/M/MZZ/MZZ20.do?op=e" target="_blank" rel="noopener noreferrer" class="transit-btn kintetsu-btn">🚆 近鉄特急（ひのとり）の予約・時刻表</a>
+          <a href="${googleUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">📍 Googleマップでルート確認</a>
+        `;
+      } else {
+        btnContainer.innerHTML = `<a href="${googleUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">📍 Googleマップでルート検索</a>`;
+      }
     } else {
       btnContainer.innerHTML = '';
     }
