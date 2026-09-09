@@ -32,7 +32,6 @@
     }
     h1 { font-size: 1.5rem; margin: 0; }
     
-    /* 日付タブ */
     .tabs {
       display: flex;
       gap: 4px;
@@ -145,7 +144,6 @@
 
   <button class="btn btn-share" onclick="shareToLine()">📱 LINEで妻に共有する</button>
 
-  <!-- 日付選択タブ -->
   <div class="tabs" id="tabContainer"></div>
 
   <div class="total-box">
@@ -245,7 +243,9 @@
       item[field] = field === 'fare' ? Number(value) : value;
       saveData();
       
-      if (field === 'from' || field === 'to' || field === 'startTime' || field === 'type') {
+      if (field === 'startTime') {
+        render(); // 時間が変わったら自動で並べ替え
+      } else if (field === 'from' || field === 'to' || field === 'type') {
         updateYahooButton(id);
       }
     }
@@ -260,13 +260,12 @@
     const hasRoute = item.from.trim() !== '' && item.to.trim() !== '';
 
     if (isTransit && hasRoute) {
-      // 日付と時間の整形 (YYYYMMDD & HHMM)
       const dateStr = item.date.replace(/-/g, '');
       const timeStr = item.startTime ? item.startTime.replace(':', '') : '0800';
       
       const yahooUrl = `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${dateStr.substring(0,4)}&m=${dateStr.substring(4,6)}&d=${dateStr.substring(6,8)}&hh=${timeStr.substring(0,2)}&m1=${timeStr.substring(2,3)}&m2=${timeStr.substring(3,4)}&type=1`;
       
-      btnContainer.innerHTML = `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.startTime}発)` ;
+      btnContainer.innerHTML = `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.startTime}発)</a>`;
     } else {
       btnContainer.innerHTML = '';
     }
@@ -281,7 +280,10 @@
     const listEl = document.getElementById('itemList');
     listEl.innerHTML = '';
 
-    const currentItems = items.filter(i => (i.date || '2026-09-12') === currentDate);
+    // 現在選択中の日付の予定を抽出し、開始時間順（早い順）に並べ替え
+    const currentItems = items
+      .filter(i => (i.date || '2026-09-12') === currentDate)
+      .sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'));
 
     currentItems.forEach((item) => {
       const card = document.createElement('div');
