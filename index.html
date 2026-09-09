@@ -123,7 +123,6 @@
       float: right;
     }
     
-    /* 各検索サービスのボタンデザイン */
     .transit-btn {
       display: block;
       color: white;
@@ -137,7 +136,6 @@
     }
     .yahoo-btn { background: #ff0033; }
     .navitime-btn { background: #008000; }
-    .google-btn { background: #4285f4; }
   </style>
 </head>
 <body>
@@ -175,13 +173,22 @@
   let currentDate = '2026-09-12';
   let items = [];
 
+  // 安全なエンコード/デコード関数（LINE等での文字化け・エラーを防止）
+  function encodeData(obj) {
+    return encodeURIComponent(JSON.stringify(obj));
+  }
+
+  function decodeData(str) {
+    return JSON.parse(decodeURIComponent(str));
+  }
+
   window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     const sharedData = urlParams.get('data');
 
     if (sharedData) {
       try {
-        items = JSON.parse(decodeURIComponent(escape(atob(sharedData))));
+        items = decodeData(sharedData);
         saveData();
       } catch (e) {
         loadData();
@@ -274,7 +281,6 @@
     }
   }
 
-  // Yahoo!乗換案内 URL (特急利用: express=1, 新幹線: shin=0/1)
   function getYahooUrl(item) {
     const targetDate = item.date || currentDate;
     const parts = targetDate.split('-');
@@ -294,7 +300,6 @@
     return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&al=0&hb=0&lb=0&s=0`;
   }
 
-  // NAVITIME URL (有料特急有効化パラメータ)
   function getNavitimeUrl(item) {
     const targetDate = (item.date || currentDate).replace(/-/g, '');
     const timeStr = (item.startTime || '08:00').replace(':', '');
@@ -412,8 +417,7 @@
   }
 
   function shareToLine() {
-    const jsonStr = JSON.stringify(items);
-    const encodedData = btoa(unescape(encodeURIComponent(jsonStr)));
+    const encodedData = encodeData(items);
     const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
     
     const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent('旅のしおりを共有します：\n' + shareUrl)}`;
