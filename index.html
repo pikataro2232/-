@@ -134,6 +134,9 @@
       margin-top: 8px;
       text-align: center;
     }
+    .kintetsu-btn {
+      background: #d97706; /* 近鉄カラー（オレンジ） */
+    }
   </style>
 </head>
 <body>
@@ -270,9 +273,25 @@
     }
   }
 
-  function getYahooUrl(item) {
-    if (!item.from || !item.to) return '';
+  function getTransitUrl(item) {
+    if (!item.from || !item.to) return { url: '', isKintetsu: false };
     
+    const fromStr = (item.from || '').trim();
+    const toStr = (item.to || '').trim();
+
+    // 近鉄の駅同士の検索かチェック（近鉄名古屋、大阪難波、難波など）
+    const isKintetsuFrom = fromStr.includes('近鉄') || fromStr.includes('名古屋');
+    const isKintetsuTo = toStr.includes('難波') || toStr.includes('近鉄');
+
+    if (isKintetsuFrom && isKintetsuTo && item.type !== '新幹線') {
+      // 近鉄特急の空席・時刻検索に直接誘導
+      return {
+        url: `https://www.ticket.kintetsu.co.jp/M/MZZ/MZZ20.do?op=e`,
+        isKintetsu: true
+      };
+    }
+
+    // 通常のJRやその他の路線はYahoo!乗換案内
     const targetDate = item.date || currentDate;
     const parts = targetDate.split('-');
     const y = parts[0];
@@ -288,8 +307,10 @@
     const isShinkansen = item.type === '新幹線';
     const shinParam = isShinkansen ? 'shin=1' : 'shin=0';
 
-    // 新幹線オフ（shin=0）、有料特急オン（express=1&expkind=1）、空路・有料特急バス全オフで近鉄特急を最優先化
-    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&al=0&hb=0&lb=0&s=2`;
+    return {
+      url: `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1&ticket=ic&expkind=1&express=1&${shinParam}&s=2`,
+      isKintetsu: false
+    };
   }
 
   function updateYahooButton(id) {
@@ -301,8 +322,12 @@
     const toVal = (item.to || '').trim();
 
     if (fromVal !== '' && toVal !== '') {
-      const url = getYahooUrl(item);
-      btnContainer.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.startTime}発)</a>`;
+      const transitInfo = getTransitUrl(item);
+      if (transitInfo.isKintetsu) {
+        btnContainer.innerHTML = `<a href="${transitInfo.url}" target="_blank" rel="noopener noreferrer" class="transit-btn kintetsu-btn">🚆 近鉄特急（ひのとり）の空席・時刻を確認</a>`;
+      } else {
+        btnContainer.innerHTML = `<a href="${transitInfo.url}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 乗換案内で検索 (${item.startTime}発)</a>`;
+      }
     } else {
       btnContainer.innerHTML = '';
     }
