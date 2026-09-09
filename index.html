@@ -200,7 +200,6 @@
     if (saved) {
       try {
         items = JSON.parse(saved);
-        // 古いデータ形式の補正
         items = items.map(item => ({
           ...item,
           date: item.date || '2026-09-12'
@@ -265,10 +264,25 @@
       
       if (field === 'startTime') {
         render();
-      } else if (field === 'from' || field === 'to' || field === 'type') {
+      } else {
         updateYahooButton(id);
       }
     }
+  }
+
+  function getYahooUrl(item) {
+    if (!item.from || !item.to) return '';
+    const dateStr = (item.date || currentDate).replace(/-/g, '');
+    const timeStr = (item.startTime || '08:00').replace(':', '');
+    
+    const y = dateStr.substring(0,4);
+    const m = dateStr.substring(4,6);
+    const d = dateStr.substring(6,8);
+    const hh = timeStr.substring(0,2);
+    const m1 = timeStr.substring(2,3);
+    const m2 = timeStr.substring(3,4);
+
+    return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${y}&m=${m}&d=${d}&hh=${hh}&m1=${m1}&m2=${m2}&type=1`;
   }
 
   function updateYahooButton(id) {
@@ -276,16 +290,12 @@
     const btnContainer = document.getElementById(`yahoo-btn-${id}`);
     if (!btnContainer || !item) return;
 
-    const isTransit = ['電車', '新幹線', 'バス', '飛行機'].includes(item.type);
-    const hasRoute = item.from.trim() !== '' && item.to.trim() !== '';
+    const fromVal = (item.from || '').trim();
+    const toVal = (item.to || '').trim();
 
-    if (isTransit && hasRoute) {
-      const dateStr = item.date.replace(/-/g, '');
-      const timeStr = item.startTime ? item.startTime.replace(':', '') : '0800';
-      
-      const yahooUrl = `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(item.from)}&to=${encodeURIComponent(item.to)}&y=${dateStr.substring(0,4)}&m=${dateStr.substring(4,6)}&d=${dateStr.substring(6,8)}&hh=${timeStr.substring(0,2)}&m1=${timeStr.substring(2,3)}&m2=${timeStr.substring(3,4)}&type=1`;
-      
-      btnContainer.innerHTML = `<a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.startTime}発)</a>`;
+    if (fromVal !== '' && toVal !== '') {
+      const url = getYahooUrl(item);
+      btnContainer.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="transit-btn">🔍 Yahoo!乗換案内で検索 (${item.from} → ${item.to})</a>`;
     } else {
       btnContainer.innerHTML = '';
     }
@@ -348,17 +358,17 @@
         <div class="grid">
           <div>
             <label>出発地 / スポット名</label>
-            <input type="text" value="${item.from}" placeholder="例: 尾張一宮 / 名古屋城" oninput="updateItem(${item.id}, 'from', this.value)">
+            <input type="text" value="${item.from || ''}" placeholder="例: 尾張一宮" oninput="updateItem(${item.id}, 'from', this.value)">
           </div>
           <div>
             <label>到着地（移動時のみ）</label>
-            <input type="text" value="${item.to}" placeholder="例: 名古屋" oninput="updateItem(${item.id}, 'to', this.value)">
+            <input type="text" value="${item.to || ''}" placeholder="例: 名古屋" oninput="updateItem(${item.id}, 'to', this.value)">
           </div>
         </div>
 
         <div style="margin-bottom: 8px;">
           <label>メモ・詳細情報</label>
-          <textarea placeholder="例: 予約番号、持ち物、集合場所など" oninput="updateItem(${item.id}, 'memo', this.value)">${item.memo || ''}</textarea>
+          <textarea placeholder="例: 予約番号、持ち物など" oninput="updateItem(${item.id}, 'memo', this.value)">${item.memo || ''}</textarea>
         </div>
 
         <div id="yahoo-btn-${item.id}"></div>
